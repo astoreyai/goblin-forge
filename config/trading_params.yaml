@@ -142,6 +142,15 @@ indicators:
 
 # ===== SABR20 Scoring Thresholds =====
 sabr20:
+  # Maximum points per component (must sum to 100)
+  max_points:
+    setup_strength: 30              # Multi-TF confluence (0-30 pts)
+    bottom_phase: 22                # Reversal quality (0-22 pts)
+    accumulation_intensity: 18      # Stoch/RSI ratio (0-18 pts) **NEW**
+    trend_momentum: 18              # Trend strength (0-18 pts)
+    risk_reward: 10                 # R:R profile (0-10 pts)
+    volume_profile: 2               # Volume characteristics (0-2 pts)
+
   # Component weights (must sum to 1.0)
   weights:
     setup_strength: 0.30            # Multi-TF confluence (0-30 pts)
@@ -202,6 +211,15 @@ screening:
     macd_rising: true               # MACD histogram must be rising
     price_vs_bb: "lower_half"       # Price in lower half of BB
 
+  # Coarse filter technical parameters
+  coarse_filter:
+    bb_max_position: 0.3            # Max BB position (0.3 = lower 30%)
+    trend_sma_period: 50            # SMA period for trend detection
+    trend_min_distance: 0.02        # Min distance above SMA (2%)
+    volume_lookback: 20             # Volume lookback period
+    atr_min_pct: 0.01               # Min ATR (1% for volatility)
+    atr_max_pct: 0.10               # Max ATR (10% to avoid extreme volatility)
+
   # Fine filter (multi-TF analysis)
   fine:
     min_preliminary_score: 40       # Minimum coarse score to proceed
@@ -214,6 +232,10 @@ screening:
     required_grades:
       - "A+"
       - "A"
+
+  # Watchlist generator settings (alternative access pattern)
+  max_watchlist_size: 20            # Maximum watchlist size
+  min_score_threshold: 65           # Minimum SABR20 score threshold
 
 # ===== Trade Execution Parameters (WITH SAFETY CONTROLS) =====
 # CRITICAL SAFETY NOTICE:
