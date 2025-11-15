@@ -478,13 +478,103 @@ python -m pstats profile.stats
 
 ---
 
+## Known Critical Issues (As of 2025-11-15)
+
+### ⚠️ REALITY CHECK - Previous Status Was False
+
+**Previous Claim**: 100% complete, all phases operational
+**Actual Status**: ~55% complete with BLOCKING issues
+**System Can Run**: ❌ NO - Missing critical files cause ImportError
+
+### Critical Missing Components (BLOCKING)
+
+The following files are referenced in imports but **DO NOT EXIST**:
+
+1. **src/data/ib_manager.py** - IB API connection management
+   - Imported by: main.py, regime_detector.py, order_manager.py, coarse_filter.py, watchlist.py, universe.py
+   - Impact: BLOCKING - System cannot connect to Interactive Brokers
+   - Estimate: 6 hours to implement
+
+2. **src/data/historical_manager.py** - Parquet data persistence
+   - Imported by: regime_detector.py, coarse_filter.py, watchlist.py, dashboard/app.py
+   - Impact: BLOCKING - System cannot persist/load historical data
+   - Issue: tests/test_historical_manager.py tests this non-existent file (R2 violation)
+   - Estimate: 6 hours to implement
+
+3. **src/data/realtime_aggregator.py** - Real-time bar aggregation
+   - Impact: HIGH - No real-time capabilities
+   - Estimate: 8 hours to implement
+
+4. **src/data/__init__.py** - Python package file
+   - Impact: MEDIUM - Package structure incomplete
+   - Estimate: 5 minutes to create
+
+5. **src/execution/validator.py** - Risk validation (1% per trade, 3% total)
+   - Impact: CRITICAL - No risk controls enforced
+   - Estimate: 4 hours to implement
+
+6. **src/execution/executor.py** - Order execution
+   - Impact: HIGH - Cannot execute trades
+   - Estimate: 4 hours to implement
+
+7. **src/execution/position_tracker.py** - Position tracking
+   - Impact: HIGH - Cannot track P&L
+   - Estimate: 4 hours to implement
+
+8. **src/pipeline/pipeline_manager.py** - Pipeline orchestration
+   - Impact: MEDIUM - No job scheduling
+   - Estimate: 6 hours to implement
+
+### System Cannot Run
+
+Any attempt to execute `python src/main.py` will fail with ImportError due to missing data managers.
+
+### SABR20 Component Weight Deviations
+
+The implemented SABR20 scoring uses different component weights than specified in PRD 05:
+
+| Component | PRD Spec | Implemented | Deviation |
+|-----------|----------|-------------|-----------|
+| 1: Setup Strength | 0-30 pts | 0-20 pts | -10 pts |
+| 2: Bottom Phase | 0-22 pts | 0-16 pts | -6 pts |
+| 3: Accumulation | 0-18 pts | 0-18 pts | ✅ MATCH |
+| 4: Trend Momentum | 0-18 pts | 0-16 pts | -2 pts |
+| 5: Risk/Reward | 0-10 pts | 0-20 pts | +10 pts |
+| 6: Volume/Macro | 0-2 pts | 0-10 pts | +8 pts |
+
+**Total still 100 pts** but distribution differs without documented rationale (R1 violation).
+
+**Action Required**: Document rationale or revert to PRD specifications.
+
+### Test Orphans (R2 Violation)
+
+- `tests/test_historical_manager.py` tests a file that doesn't exist
+- Several integration tests cannot run without infrastructure
+
+### Five Core Rules Violations
+
+- ❌ **R1 Truthfulness**: VIOLATED - Previous TODO claimed 100% when 55% actual
+- ❌ **R2 Completeness**: VIOLATED - Missing critical files, tests for non-existent code
+- ⚠️ **R3 State Safety**: PARTIAL - Commits exist but were misleading
+- ⚠️ **R4 Minimal Files**: PARTIAL - Files minimal but docs were inaccurate
+- ✅ **R5 Token Constraints**: COMPLIANT - What exists is complete
+
+### Accurate Progress: 55% (not 100%)
+
+**Estimated Time to Actual Completion**: 5-7 days of focused development
+
+See updated [TODO.md](TODO.md) for detailed breakdown of what's missing.
+
+---
+
 ## Current Status
 
-**Last Updated**: 2025-11-14
-**Phase**: Specification Complete
-**Next**: Phase 1 - Project Setup
+**Last Updated**: 2025-11-15 (After Comprehensive Analysis)
+**Phase**: Phase 2 (Data Infrastructure) - IN PROGRESS ⏳
+**Progress**: 55% overall (honest assessment)
+**Next**: Complete critical blockers (ib_manager, historical_manager, realtime_aggregator)
 
-See [TODO.md](TODO.md) for detailed progress.
+See [TODO.md](TODO.md) for detailed progress and action plan.
 
 ---
 
@@ -492,12 +582,14 @@ See [TODO.md](TODO.md) for detailed progress.
 
 - **ALWAYS read IMPLEMENTATION_GUIDE.md before starting work**
 - **ALWAYS update TODO.md when completing tasks**
-- **ALWAYS follow the 5 core rules (R1-R5)**
+- **ALWAYS follow the 5 core rules (R1-R5)** - Previous violations corrected
 - **ALWAYS run tests before committing**
+- **ALWAYS verify files exist before claiming implementation complete** (R1)
 - Ask clarifying questions when specifications are unclear (R1)
 - Never create placeholder code - implement fully or not at all (R2)
 - Checkpoint after each phase (R3)
 - Edit existing files rather than creating new ones when possible (R4)
 - Never abbreviate to save tokens - checkpoint instead (R5)
+- **BE TRUTHFUL about completion status** - Claims of 100% when 55% violate R1
 
-**This is a professional trading system. Quality and correctness are paramount.**
+**This is a professional trading system. Quality, correctness, and HONESTY are paramount.**
