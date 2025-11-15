@@ -726,3 +726,8 @@ def create_historical_manager(
         Configured manager instance
     """
     return HistoricalDataManager(data_dir=data_dir, **kwargs)
+
+
+# Create default singleton instance for convenient imports
+# Usage: from src.data.historical_manager import historical_manager
+historical_manager = HistoricalDataManager(data_dir='data/historical')

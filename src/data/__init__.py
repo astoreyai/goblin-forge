@@ -26,11 +26,13 @@ from .ib_manager import (
     ConnectionState,
     ConnectionMetrics,
     create_ib_manager,
+    ib_manager,
 )
 from .historical_manager import (
     HistoricalDataManager,
     DatasetMetadata,
     create_historical_manager,
+    historical_manager,
 )
 from .realtime_aggregator import (
     RealtimeAggregator,
@@ -46,9 +48,11 @@ __all__ = [
     'ConnectionState',
     'ConnectionMetrics',
     'create_ib_manager',
+    'ib_manager',
     'HistoricalDataManager',
     'DatasetMetadata',
     'create_historical_manager',
+    'historical_manager',
     'RealtimeAggregator',
     'Bar',
     'Timeframe',

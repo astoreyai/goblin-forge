@@ -836,3 +836,8 @@ def create_ib_manager(
     if auto_connect:
         manager.connect()
     return manager
+
+
+# Create default singleton instance for convenient imports
+# Usage: from src.data.ib_manager import ib_manager
+ib_manager = IBDataManager(port=4002, client_id=1, heartbeat_interval=30)
