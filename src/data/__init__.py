@@ -27,6 +27,11 @@ from .ib_manager import (
     ConnectionMetrics,
     create_ib_manager,
 )
+from .historical_manager import (
+    HistoricalDataManager,
+    DatasetMetadata,
+    create_historical_manager,
+)
 from .ticker_downloader import TickerDownloader
 
 __all__ = [
@@ -34,5 +39,8 @@ __all__ = [
     'ConnectionState',
     'ConnectionMetrics',
     'create_ib_manager',
+    'HistoricalDataManager',
+    'DatasetMetadata',
+    'create_historical_manager',
     'TickerDownloader',
 ]
