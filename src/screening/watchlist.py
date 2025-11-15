@@ -78,10 +78,10 @@ class WatchlistGenerator:
         profile = timeframe_config.profiles[active_profile]
 
         self.timeframes = {
-            'trigger': profile.trigger,
-            'confirmation': profile.confirmation,
-            'regime': profile.regime,
-            'macro': profile.macro
+            'trigger': profile['trigger'],
+            'confirmation': profile['confirmation'],
+            'regime': profile['regime'],
+            'macro': profile['macro']
         }
 
         # Watchlist parameters
