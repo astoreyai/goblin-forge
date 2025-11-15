@@ -1,10 +1,10 @@
 # Screener Trading System - TODO
 
-**Last Updated**: 2025-11-15 16:19
-**Status**: ✅ **PHASES 1-4 COMPLETE + PHASE 6 SCALE TESTING COMPLETE**
-**Progress**: Core infrastructure 100% + Scale testing validated
+**Last Updated**: 2025-11-15 16:37
+**Status**: ✅ **PHASES 1-4 COMPLETE + PHASE 6 COMPREHENSIVE TESTING COMPLETE**
+**Progress**: Core infrastructure 100% + Comprehensive testing (Phase 6a-6d) validated
 **IB Gateway**: ✅ TESTED - 39/40 tests passing (97.5%) with live connection
-**Latest**: Phase 6 Scale Testing - 10 & 95 symbol tests PASSED
+**Latest**: Phase 6c & 6d - Aggregation accuracy + Sequential workflow tests (6/6 PASSING)
 
 ---
 
@@ -154,6 +154,56 @@
 
 **Note**: Sequential processing required due to ib-insync event loop constraints. Parallel processing not feasible with current IB API architecture.
 
+### Phase 6c: Aggregation Accuracy Test ✅
+**Status**: COMPLETE
+**Completion Date**: 2025-11-15
+**Commit**: Pending
+
+**Deliverables**:
+- ✅ `scripts/test_aggregation_accuracy.py` (370 lines)
+- ✅ Tests complete data pipeline (IB → aggregation → validation)
+- ✅ Validates OHLCV relationships (high ≥ low, etc.)
+- ✅ Validates volume preservation
+- ✅ Validates price range consistency
+- ✅ Displays detailed results to user
+
+**Test Results**:
+- Base data: 60 bars of 5-second SPY data
+- 1min aggregation: 4 complete bars (from 48 source bars)
+- 5min aggregation: 0 complete bars (need more data)
+- OHLCV validation: ✅ PASS
+- Price ranges preserved: ✅ PASS
+
+**Note**: Volume "loss" is expected behavior - incomplete bars are correctly excluded from aggregated results.
+
+### Phase 6d: Sequential Testing Workflow ✅
+**Status**: COMPLETE
+**Completion Date**: 2025-11-15
+**Commit**: Pending
+
+**Deliverables**:
+- ✅ `scripts/test_sequential.py` (560 lines)
+- ✅ Comprehensive 6-component testing workflow
+- ✅ User-friendly progress display
+- ✅ Component isolation (can run individual tests)
+- ✅ Skip-IB option for cached data testing
+
+**Test Components**:
+1. IB Gateway Connectivity ✅
+2. Historical Data Fetching ✅ (120 bars)
+3. Parquet Storage & Retrieval ✅ (10.2 KB file)
+4. Multi-Timeframe Aggregation ✅ (9x 1min, 1x 5min)
+5. Aggregation Accuracy Validation ✅ (OHLCV + price ranges)
+6. Trade Validation (Risk Controls) ✅ (1%/3% enforced)
+
+**Usage**:
+```bash
+python scripts/test_sequential.py              # Run all tests
+python scripts/test_sequential.py --skip-ib    # Use cached data
+python scripts/test_sequential.py --component ib     # Test IB only
+python scripts/test_sequential.py --verbose    # Detailed output
+```
+
 ---
 
 ## 📊 OVERALL SUMMARY
@@ -168,6 +218,8 @@
 | 4 | E2E Integration | 3/9* | N/A | ✅ Complete |
 | 6a | Scale Test (10 symbols) | 1/1 | N/A | ✅ Complete |
 | 6b | Scale Test (95 symbols) | 1/1 | N/A | ✅ Complete |
+| 6c | Aggregation Accuracy | 1/1 | N/A | ✅ Complete |
+| 6d | Sequential Workflow | 6/6 | N/A | ✅ Complete |
 
 **Totals**:
 - **216 total tests** (verified count, updated from 163)
@@ -180,12 +232,15 @@
 
 \* 3/9 E2E tests pass without IB; all 9 ready for IB deployment
 
-**Recent Improvements**:
+**Recent Improvements** (2025-11-15):
+- ✅ **Aggregation accuracy testing** - Comprehensive validation of multi-timeframe aggregation
+- ✅ **Sequential testing workflow** - 6-component end-to-end validation (all passing)
+- ✅ **Scale testing complete** - 95 symbols processed in 48s (2.0 sym/sec)
+- ✅ **Risk controls validated** - 1%/3% limits enforced correctly
 - ✅ **IB Gateway integration TESTED** (39/40 tests passing, 97.5%)
-- ✅ Historical data fetching verified with live IB Gateway (AAPL, multiple timeframes)
+- ✅ Historical data fetching verified with live IB Gateway
 - ✅ Fixed ImportError issues with singleton exports (commit `4045694`)
 - ✅ Test pass rate improved from 93.8% to 99.4%
-- ✅ Added `ib_manager` and `historical_manager` singleton instances for convenient imports
 
 ### System Architecture
 ```
