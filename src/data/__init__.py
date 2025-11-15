@@ -32,6 +32,13 @@ from .historical_manager import (
     DatasetMetadata,
     create_historical_manager,
 )
+from .realtime_aggregator import (
+    RealtimeAggregator,
+    Bar,
+    Timeframe,
+    AggregatedBar,
+    create_aggregator,
+)
 from .ticker_downloader import TickerDownloader
 
 __all__ = [
@@ -42,5 +49,10 @@ __all__ = [
     'HistoricalDataManager',
     'DatasetMetadata',
     'create_historical_manager',
+    'RealtimeAggregator',
+    'Bar',
+    'Timeframe',
+    'AggregatedBar',
+    'create_aggregator',
     'TickerDownloader',
 ]
