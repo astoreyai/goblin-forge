@@ -29,25 +29,87 @@ universe:
 
 # ===== Timeframe Configuration =====
 timeframes:
-  # Primary timeframes for multi-TF analysis
-  trigger: "5 mins"                 # T1: Entry trigger timeframe
-  confirmation: "15 mins"           # T2: Confirmation timeframe
-  regime: "1 hour"                  # T3: Regime/trend timeframe
-  macro: "4 hours"                  # T4: Macro trend timeframe
+  # ===== Timeframe Profiles =====
+  # Select active profile by setting TIMEFRAME_PROFILE environment variable
+  # Default: intraday_5m (5-min based intraday trading)
+  active_profile: "${TIMEFRAME_PROFILE:intraday_5m}"
 
-  # Chart display timeframes (dashboard)
-  chart_timeframes:
-    - "5 mins"                      # 5-minute bars (NEW - per user request)
-    - "15 mins"                     # 15-minute bars
-    - "1 hour"                      # 1-hour bars
-    - "4 hours"                     # 4-hour bars
+  # Available timeframe profiles
+  profiles:
+    intraday_5m:                    # Fast intraday (5-min based)
+      name: "Intraday 5-Minute"
+      trigger: "5 mins"             # T1: Entry trigger
+      confirmation: "15 mins"       # T2: Confirmation
+      regime: "1 hour"              # T3: Trend/regime
+      macro: "4 hours"              # T4: Macro trend
+      chart_display:
+        - "5 mins"
+        - "15 mins"
+        - "1 hour"
+        - "4 hours"
+      historical_days:
+        "5 mins": 5
+        "15 mins": 10
+        "1 hour": 30
+        "4 hours": 90
+      description: "Fast intraday trading on 5-min bars"
 
-  # Historical data lookback
-  historical_days:
-    "5 mins": 5                     # 5 days of 5-min bars
-    "15 mins": 10                   # 10 days of 15-min bars
-    "1 hour": 30                    # 30 days of 1-hour bars
-    "4 hours": 90                   # 90 days of 4-hour bars
+    intraday_15m:                   # Standard intraday (15-min based)
+      name: "Intraday 15-Minute"
+      trigger: "15 mins"            # T1: Entry trigger
+      confirmation: "30 mins"       # T2: Confirmation
+      regime: "1 hour"              # T3: Trend/regime
+      macro: "4 hours"              # T4: Macro trend
+      chart_display:
+        - "15 mins"
+        - "30 mins"
+        - "1 hour"
+        - "4 hours"
+      historical_days:
+        "15 mins": 10
+        "30 mins": 15
+        "1 hour": 30
+        "4 hours": 90
+      description: "Standard intraday trading on 15-min bars"
+
+    swing:                          # Swing trading (1-hour based)
+      name: "Swing Trading"
+      trigger: "1 hour"             # T1: Entry trigger
+      confirmation: "4 hours"       # T2: Confirmation
+      regime: "1 day"               # T3: Trend/regime
+      macro: "1 week"               # T4: Macro trend (weekly)
+      chart_display:
+        - "1 hour"
+        - "4 hours"
+        - "1 day"
+      historical_days:
+        "1 hour": 60
+        "4 hours": 180
+        "1 day": 365
+      description: "Swing trading on hourly bars"
+
+    daily:                          # Daily/position trading
+      name: "Daily Position"
+      trigger: "4 hours"            # T1: Entry trigger
+      confirmation: "1 day"         # T2: Confirmation
+      regime: "1 week"              # T3: Trend/regime
+      macro: "1 month"              # T4: Macro trend
+      chart_display:
+        - "4 hours"
+        - "1 day"
+        - "1 week"
+      historical_days:
+        "4 hours": 180
+        "1 day": 365
+        "1 week": 520               # 2 years
+      description: "Daily/weekly position trading"
+
+  # Override individual timeframes (optional - overrides active profile)
+  # Uncomment to manually set specific timeframes
+  # trigger: "15 mins"
+  # confirmation: "30 mins"
+  # regime: "1 hour"
+  # macro: "4 hours"
 
 # ===== Indicator Parameters =====
 indicators:
