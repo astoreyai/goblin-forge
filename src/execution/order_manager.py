@@ -48,6 +48,113 @@ from src.screening.sabr20_engine import SABR20Score
 from src.regime.regime_detector import regime_detector
 
 
+@dataclass
+class Position:
+    """
+    Position tracking with real-time P&L.
+
+    Attributes:
+    -----------
+    symbol : str
+        Stock symbol
+    side : str
+        'BUY' or 'SELL'
+    quantity : int
+        Number of shares
+    entry_price : float
+        Entry price per share
+    entry_time : datetime
+        Position entry timestamp
+    stop_price : float, optional
+        Stop loss price
+    target_price : float, optional
+        Take profit price
+    current_price : float
+        Current market price (updated from realtime bars)
+    last_update : datetime, optional
+        Timestamp of last price update
+    order_id : int, optional
+        IB order ID
+    """
+    symbol: str
+    side: str
+    quantity: int
+    entry_price: float
+    entry_time: datetime
+    stop_price: Optional[float] = None
+    target_price: Optional[float] = None
+    current_price: float = 0.0
+    last_update: Optional[datetime] = None
+    order_id: Optional[int] = None
+
+    @property
+    def unrealized_pnl(self) -> float:
+        """
+        Calculate unrealized P&L based on current price.
+
+        Returns:
+        --------
+        float
+            Unrealized profit/loss in dollars
+        """
+        if self.current_price == 0.0:
+            return 0.0
+
+        if self.side == 'BUY':
+            pnl = (self.current_price - self.entry_price) * self.quantity
+        else:  # SELL/SHORT
+            pnl = (self.entry_price - self.current_price) * self.quantity
+
+        return pnl
+
+    @property
+    def unrealized_pnl_pct(self) -> float:
+        """
+        Calculate unrealized P&L as percentage of entry value.
+
+        Returns:
+        --------
+        float
+            Unrealized P&L percentage
+        """
+        if self.entry_price == 0:
+            return 0.0
+        return (self.unrealized_pnl / (self.entry_price * self.quantity)) * 100
+
+    @property
+    def current_risk(self) -> float:
+        """
+        Current distance from stop loss in dollars.
+
+        Returns:
+        --------
+        float
+            Current risk in dollars
+        """
+        if not self.stop_price:
+            return 0.0
+
+        if self.side == 'BUY':
+            return (self.current_price - self.stop_price) * self.quantity
+        else:
+            return (self.stop_price - self.current_price) * self.quantity
+
+
+@dataclass
+class ClosedTrade:
+    """Record of a closed trade."""
+    symbol: str
+    side: str
+    quantity: int
+    entry_price: float
+    exit_price: float
+    entry_time: datetime
+    exit_time: datetime
+    pnl: float
+    pnl_pct: float
+    order_id: Optional[int] = None
+
+
 class OrderStatus(Enum):
     """Order status types."""
     PENDING = "pending"
@@ -107,7 +214,18 @@ class OrderManager:
     """
     Order management and execution system.
 
-    Validates and submits orders with strict risk controls.
+    Manages order creation, position tracking, and live P&L updates.
+
+    Features:
+    - Real-time position price updates from realtime_aggregator
+    - Unrealized P&L calculation for open positions
+    - Portfolio-level P&L aggregation
+    - Risk monitoring (distance from stops)
+
+    Integration:
+    - RealtimeAggregator calls update_position_price() on each new bar
+    - Dashboard reads position data for P&L display
+    - Trailing stop manager uses current_risk for stop adjustments
 
     Attributes:
     -----------
@@ -119,6 +237,10 @@ class OrderManager:
         Maximum concurrent positions
     allow_execution : bool
         Master kill switch for live trading
+    positions : Dict[str, Position]
+        Active positions with live P&L tracking
+    closed_trades : List[ClosedTrade]
+        History of closed trades
     """
 
     def __init__(self):
@@ -132,7 +254,11 @@ class OrderManager:
         self.max_total_risk = exec_config.max_total_risk_pct / 100
         self.max_positions = exec_config.max_concurrent_positions
 
-        # Active positions tracking
+        # Position tracking with live P&L
+        self.positions: Dict[str, Position] = {}
+        self.closed_trades: List[ClosedTrade] = []
+
+        # Legacy support
         self.active_positions: Dict[str, TradeOrder] = {}
         self.order_history: List[TradeOrder] = []
 
@@ -505,6 +631,122 @@ class OrderManager:
                 'sabr20': pos.sabr20_score,
                 'status': pos.status.value,
                 'timestamp': pos.timestamp
+            })
+
+        return pd.DataFrame(rows)
+
+    def update_position_price(self, symbol: str, current_price: float) -> None:
+        """
+        Update position current price from real-time bar data.
+
+        Called by realtime_aggregator on each new bar to update live P&L.
+
+        Parameters:
+        -----------
+        symbol : str
+            Symbol to update
+        current_price : float
+            Latest price from realtime bar
+
+        Notes:
+        ------
+        - Updates position.current_price and position.last_update
+        - Logs unrealized P&L for monitoring
+        - Safe to call for non-existent positions (no-op)
+        """
+        if symbol not in self.positions:
+            return
+
+        position = self.positions[symbol]
+        position.current_price = current_price
+        position.last_update = datetime.now()
+
+        logger.debug(
+            f"Updated {symbol} position price: ${current_price:.2f}, "
+            f"Unrealized P&L: ${position.unrealized_pnl:+.2f} "
+            f"({position.unrealized_pnl_pct:+.2f}%)"
+        )
+
+    def get_portfolio_pnl(self) -> Dict[str, Any]:
+        """
+        Get total portfolio P&L (realized + unrealized).
+
+        Returns:
+        --------
+        dict
+            {
+                'realized_pnl': float,
+                'unrealized_pnl': float,
+                'total_pnl': float,
+                'positions_count': int,
+                'winning_positions': int,
+                'losing_positions': int,
+                'closed_trades_count': int,
+                'winning_trades': int,
+                'losing_trades': int
+            }
+
+        Examples:
+        ---------
+        >>> pnl = order_manager.get_portfolio_pnl()
+        >>> print(f"Total P&L: ${pnl['total_pnl']:.2f}")
+        >>> print(f"Win rate: {pnl['winning_positions'] / pnl['positions_count']:.1%}")
+        """
+        unrealized_pnl = sum(pos.unrealized_pnl for pos in self.positions.values())
+        realized_pnl = sum(trade.pnl for trade in self.closed_trades)
+
+        winning = sum(1 for pos in self.positions.values() if pos.unrealized_pnl > 0)
+        losing = sum(1 for pos in self.positions.values() if pos.unrealized_pnl < 0)
+
+        winning_trades = sum(1 for trade in self.closed_trades if trade.pnl > 0)
+        losing_trades = sum(1 for trade in self.closed_trades if trade.pnl < 0)
+
+        return {
+            'realized_pnl': realized_pnl,
+            'unrealized_pnl': unrealized_pnl,
+            'total_pnl': realized_pnl + unrealized_pnl,
+            'positions_count': len(self.positions),
+            'winning_positions': winning,
+            'losing_positions': losing,
+            'closed_trades_count': len(self.closed_trades),
+            'winning_trades': winning_trades,
+            'losing_trades': losing_trades
+        }
+
+    def get_positions_dataframe(self) -> pd.DataFrame:
+        """
+        Get positions with live P&L as DataFrame.
+
+        Returns:
+        --------
+        pd.DataFrame
+            Columns: symbol, side, quantity, entry_price, current_price,
+                    stop_price, target_price, unrealized_pnl, unrealized_pnl_pct,
+                    current_risk, last_update
+
+        Examples:
+        ---------
+        >>> df = order_manager.get_positions_dataframe()
+        >>> print(df[['symbol', 'unrealized_pnl', 'unrealized_pnl_pct']])
+        """
+        if not self.positions:
+            return pd.DataFrame()
+
+        rows = []
+        for pos in self.positions.values():
+            rows.append({
+                'symbol': pos.symbol,
+                'side': pos.side,
+                'quantity': pos.quantity,
+                'entry_price': pos.entry_price,
+                'current_price': pos.current_price,
+                'stop_price': pos.stop_price,
+                'target_price': pos.target_price,
+                'unrealized_pnl': pos.unrealized_pnl,
+                'unrealized_pnl_pct': pos.unrealized_pnl_pct,
+                'current_risk': pos.current_risk,
+                'entry_time': pos.entry_time,
+                'last_update': pos.last_update
             })
 
         return pd.DataFrame(rows)

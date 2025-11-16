@@ -375,6 +375,16 @@ class RealtimeAggregator:
                 f"{completed_bar.timestamp} (from {num_bars} source bars)"
             )
 
+            # Update position prices if order_manager is available
+            # Use the close price from the completed bar
+            try:
+                from src.execution.order_manager import order_manager
+                order_manager.update_position_price(symbol, completed_bar.close)
+            except ImportError:
+                pass  # order_manager not available (testing scenario)
+            except Exception as e:
+                logger.warning(f"Failed to update position for {symbol}: {e}")
+
             # Start new incomplete bar
             bar_start = self._get_bar_boundary(source_bar.timestamp, target_tf)
 
