@@ -322,6 +322,14 @@ regime:
     min_advance_decline: 0.4        # A/D ratio threshold
     max_new_lows_pct: 30            # Max % new lows
 
+  # ADX trend strength
+  adx_trending_threshold: 25        # ADX > 25 = trending market
+  adx_ranging_threshold: 20         # ADX < 20 = ranging market
+  adx_strong_trend: 40              # ADX > 40 = strong trend
+
+  # Volatility threshold (ATR-based)
+  volatility_threshold: 0.03        # ATR threshold (3% of price)
+
 # ===== Performance Targets =====
 performance:
   # System performance
