@@ -264,6 +264,7 @@ def test_calculate_new_stop_percentage_short(fresh_trailing_manager, mock_positi
 
 def test_calculate_new_stop_atr_long(fresh_trailing_manager, mock_historical_manager, mock_indicator_engine):
     """Test stop calculation for LONG position with ATR trail."""
+    # Patch the imported modules
     with patch('src.data.historical_manager.historical_manager', mock_historical_manager), \
          patch('src.indicators.indicator_engine.indicator_engine', mock_indicator_engine):
 
