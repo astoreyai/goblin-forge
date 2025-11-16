@@ -75,6 +75,12 @@ class Position:
         Timestamp of last price update
     order_id : int, optional
         IB order ID
+    risk_amount : float
+        Initial risk in dollars
+    mae : float
+        Maximum Adverse Excursion (worst drawdown)
+    mfe : float
+        Maximum Favorable Excursion (best gain)
     """
     symbol: str
     side: str
@@ -86,6 +92,9 @@ class Position:
     current_price: float = 0.0
     last_update: Optional[datetime] = None
     order_id: Optional[int] = None
+    risk_amount: float = 0.0
+    mae: float = 0.0
+    mfe: float = 0.0
 
     @property
     def unrealized_pnl(self) -> float:
@@ -261,6 +270,11 @@ class OrderManager:
         # Legacy support
         self.active_positions: Dict[str, TradeOrder] = {}
         self.order_history: List[TradeOrder] = []
+
+        # Trade database integration
+        from src.data.trade_database import trade_database
+        self.trade_database = trade_database
+        self.position_to_trade_id: Dict[str, int] = {}
 
         # Safety check
         if self.allow_execution:
@@ -637,7 +651,7 @@ class OrderManager:
 
     def update_position_price(self, symbol: str, current_price: float) -> None:
         """
-        Update position current price from real-time bar data.
+        Update position current price and MAE/MFE from real-time bar data.
 
         Called by realtime_aggregator on each new bar to update live P&L.
 
@@ -651,6 +665,8 @@ class OrderManager:
         Notes:
         ------
         - Updates position.current_price and position.last_update
+        - Tracks MAE (Maximum Adverse Excursion) and MFE (Maximum Favorable Excursion)
+        - Updates trade database with current MAE/MFE
         - Logs unrealized P&L for monitoring
         - Safe to call for non-existent positions (no-op)
         """
@@ -661,10 +677,32 @@ class OrderManager:
         position.current_price = current_price
         position.last_update = datetime.now()
 
+        # Update MAE/MFE
+        unrealized_pnl = position.unrealized_pnl
+
+        if position.side == 'BUY':
+            # MAE = most negative unrealized P&L
+            if unrealized_pnl < position.mae:
+                position.mae = unrealized_pnl
+            # MFE = most positive unrealized P&L
+            if unrealized_pnl > position.mfe:
+                position.mfe = unrealized_pnl
+        else:  # SHORT
+            if unrealized_pnl < position.mae:
+                position.mae = unrealized_pnl
+            if unrealized_pnl > position.mfe:
+                position.mfe = unrealized_pnl
+
+        # Update database MAE/MFE if trade exists
+        if symbol in self.position_to_trade_id:
+            trade_id = self.position_to_trade_id[symbol]
+            self.trade_database.update_trade_mae_mfe(trade_id, current_price)
+
         logger.debug(
             f"Updated {symbol} position price: ${current_price:.2f}, "
             f"Unrealized P&L: ${position.unrealized_pnl:+.2f} "
-            f"({position.unrealized_pnl_pct:+.2f}%)"
+            f"({position.unrealized_pnl_pct:+.2f}%), "
+            f"MAE: ${position.mae:.2f}, MFE: ${position.mfe:.2f}"
         )
 
     def get_portfolio_pnl(self) -> Dict[str, Any]:
@@ -750,6 +788,277 @@ class OrderManager:
             })
 
         return pd.DataFrame(rows)
+
+    def open_position(
+        self,
+        symbol: str,
+        side: str,
+        quantity: int,
+        entry_price: float,
+        stop_price: float,
+        target_price: float,
+        risk_amount: float,
+        order_id: Optional[int] = None
+    ) -> None:
+        """
+        Open new position and record in database.
+
+        Parameters:
+        -----------
+        symbol : str
+            Stock symbol
+        side : str
+            'BUY' or 'SELL'
+        quantity : int
+            Number of shares
+        entry_price : float
+            Entry price
+        stop_price : float
+            Stop loss price
+        target_price : float
+            Take profit price
+        risk_amount : float
+            Initial risk amount
+        order_id : int, optional
+            IB order ID
+
+        Notes:
+        ------
+        Automatically records trade entry in database with SABR20 score and regime.
+        """
+        # Create position
+        position = Position(
+            symbol=symbol,
+            side=side,
+            quantity=quantity,
+            entry_price=entry_price,
+            entry_time=datetime.now(),
+            stop_price=stop_price,
+            target_price=target_price,
+            current_price=entry_price,
+            risk_amount=risk_amount,
+            order_id=order_id,
+            mae=0.0,
+            mfe=0.0
+        )
+
+        self.positions[symbol] = position
+
+        # Record in database
+        self._on_position_opened(symbol)
+
+        logger.info(
+            f"Opened position: {symbol} {side} {quantity}@${entry_price:.2f}, "
+            f"stop=${stop_price:.2f}, target=${target_price:.2f}"
+        )
+
+    def close_position(
+        self,
+        symbol: str,
+        exit_price: float,
+        exit_reason: str,
+        commission: float = 0.0,
+        notes: Optional[str] = None
+    ) -> None:
+        """
+        Close position and record in database.
+
+        Parameters:
+        -----------
+        symbol : str
+            Stock symbol
+        exit_price : float
+            Exit price
+        exit_reason : str
+            'STOP', 'TARGET', 'MANUAL', 'TRAILING_STOP'
+        commission : float, default=0.0
+            Total commission
+        notes : str, optional
+            Exit notes
+
+        Notes:
+        ------
+        Automatically records trade exit in database with final MAE/MFE.
+        """
+        if symbol not in self.positions:
+            logger.warning(f"Cannot close position - {symbol} not found")
+            return
+
+        position = self.positions[symbol]
+
+        # Calculate realized P&L
+        if position.side == 'BUY':
+            pnl = (exit_price - position.entry_price) * position.quantity
+        else:
+            pnl = (position.entry_price - exit_price) * position.quantity
+
+        realized_pnl = pnl - commission
+        pnl_pct = (realized_pnl / (position.entry_price * position.quantity)) * 100
+
+        # Create closed trade record
+        closed_trade = ClosedTrade(
+            symbol=position.symbol,
+            side=position.side,
+            quantity=position.quantity,
+            entry_price=position.entry_price,
+            exit_price=exit_price,
+            entry_time=position.entry_time,
+            exit_time=datetime.now(),
+            pnl=realized_pnl,
+            pnl_pct=pnl_pct,
+            order_id=position.order_id
+        )
+
+        self.closed_trades.append(closed_trade)
+
+        # Record exit in database
+        self._on_position_closed(
+            symbol=symbol,
+            exit_price=exit_price,
+            exit_reason=exit_reason,
+            commission=commission,
+            notes=notes
+        )
+
+        # Remove from active positions
+        del self.positions[symbol]
+
+        logger.info(
+            f"Closed position: {symbol} @ ${exit_price:.2f}, "
+            f"P&L: ${realized_pnl:+.2f} ({pnl_pct:+.2f}%), "
+            f"reason: {exit_reason}"
+        )
+
+    def _on_position_opened(self, symbol: str) -> None:
+        """
+        Record trade entry in database when position opened.
+
+        Parameters:
+        -----------
+        symbol : str
+            Stock symbol
+
+        Notes:
+        ------
+        - Retrieves SABR20 score from watchlist if available
+        - Retrieves market regime from regime analyzer if available
+        - Stores trade_id for future updates
+        """
+        if symbol not in self.positions:
+            logger.warning(f"Position {symbol} not found for database recording")
+            return
+
+        position = self.positions[symbol]
+
+        # Get SABR20 score from latest watchlist
+        sabr20_score = None
+        try:
+            from src.screening.watchlist import watchlist_manager
+            watchlist = watchlist_manager.get_current_watchlist()
+            score_entry = next((s for s in watchlist if s['symbol'] == symbol), None)
+            if score_entry:
+                sabr20_score = score_entry.get('total_score')
+        except Exception as e:
+            logger.debug(f"Could not retrieve SABR20 score for {symbol}: {e}")
+
+        # Get market regime
+        regime = None
+        try:
+            current_regime = regime_detector.get_current_regime()
+            if current_regime:
+                regime = current_regime.get('regime_name')
+        except Exception as e:
+            logger.debug(f"Could not retrieve regime for {symbol}: {e}")
+
+        # Record in database
+        trade_id = self.trade_database.record_trade_entry(
+            symbol=symbol,
+            side=position.side,
+            entry_time=position.entry_time,
+            entry_price=position.entry_price,
+            quantity=position.quantity,
+            stop_price=position.stop_price or 0.0,
+            target_price=position.target_price or 0.0,
+            risk_amount=position.risk_amount,
+            sabr20_score=sabr20_score,
+            regime=regime
+        )
+
+        self.position_to_trade_id[symbol] = trade_id
+        logger.info(f"Recorded trade entry for {symbol}, trade_id={trade_id}")
+
+    def _on_position_closed(
+        self,
+        symbol: str,
+        exit_price: float,
+        exit_reason: str,
+        commission: float = 0.0,
+        notes: Optional[str] = None
+    ) -> None:
+        """
+        Record trade exit in database when position closed.
+
+        Parameters:
+        -----------
+        symbol : str
+            Stock symbol
+        exit_price : float
+            Exit price
+        exit_reason : str
+            'STOP', 'TARGET', 'MANUAL', 'TRAILING_STOP'
+        commission : float, default=0.0
+            Total commission
+        notes : str, optional
+            Exit notes
+        """
+        if symbol not in self.position_to_trade_id:
+            logger.warning(f"No trade_id found for {symbol}, cannot record exit")
+            return
+
+        trade_id = self.position_to_trade_id[symbol]
+
+        # Get position for MAE/MFE (before it's deleted)
+        if symbol in self.positions:
+            position = self.positions[symbol]
+            mae = position.mae
+            mfe = position.mfe
+        else:
+            # Already deleted - use from closed_trades
+            if self.closed_trades:
+                mae = None
+                mfe = None
+            else:
+                mae = None
+                mfe = None
+
+        # Determine actual stop/target hit
+        actual_stop = None
+        actual_target = None
+
+        if exit_reason == 'STOP':
+            actual_stop = exit_price
+        elif exit_reason == 'TARGET':
+            actual_target = exit_price
+
+        # Record exit
+        self.trade_database.record_trade_exit(
+            trade_id=trade_id,
+            exit_time=datetime.now(),
+            exit_price=exit_price,
+            exit_reason=exit_reason,
+            commission=commission,
+            actual_stop=actual_stop,
+            actual_target=actual_target,
+            mae=mae,
+            mfe=mfe,
+            notes=notes
+        )
+
+        del self.position_to_trade_id[symbol]
+        logger.info(
+            f"Recorded trade exit for {symbol}, trade_id={trade_id}, "
+            f"reason={exit_reason}"
+        )
 
 
 # Global singleton instance
