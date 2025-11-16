@@ -154,3 +154,4 @@ logs/
 *.parquet
 *.h5
 *.hdf5
+node_modules/

@@ -173,7 +173,7 @@ class RegimeDetector:
                     return self.cache[cache_key]['data']
 
             # Try to load from historical manager first
-            df = historical_manager.load(symbol, timeframe)
+            df = historical_manager.load_symbol_data(symbol, timeframe)
 
             # If not available or stale, fetch from IB
             if df is None or df.empty or (datetime.now() - df['date'].max()).days > 1:

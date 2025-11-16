@@ -526,7 +526,7 @@ if __name__ == '__main__':
     logger.info("Navigate to: http://localhost:8050")
 
     # Run server
-    app.run_server(
+    app.run(
         debug=config.get('dashboard.debug', True),
         host='0.0.0.0',
         port=8050

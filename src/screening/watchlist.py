@@ -126,7 +126,7 @@ class WatchlistGenerator:
             try:
                 # Load data
                 if use_cached:
-                    df = historical_manager.load(symbol, tf_value)
+                    df = historical_manager.load_symbol_data(symbol, tf_value)
                 else:
                     # Determine duration based on timeframe
                     if '1 day' in tf_value or '1 week' in tf_value:
