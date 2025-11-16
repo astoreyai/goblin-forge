@@ -297,7 +297,7 @@ class CoarseFilter:
         try:
             # Load data
             if use_cached_data:
-                df = historical_manager.load(symbol, timeframe)
+                df = historical_manager.load_symbol_data(symbol, timeframe)
             else:
                 df = ib_manager.fetch_historical_bars(
                     symbol=symbol,
@@ -358,7 +358,7 @@ class CoarseFilter:
         >>> candidates = coarse_filter.screen(universe)
 
         >>> # Option 2: Pre-load data for efficiency
-        >>> data = {sym: historical_manager.load(sym, '1 hour') for sym in universe}
+        >>> data = {sym: historical_manager.load_symbol_data(sym, '1 hour') for sym in universe}
         >>> candidates = coarse_filter.screen(universe, data_dict=data)
         """
         logger.info(f"Coarse screening {len(symbols)} symbols on {timeframe}...")
@@ -379,7 +379,7 @@ class CoarseFilter:
                 if data_dict is not None and symbol in data_dict:
                     df = data_dict[symbol]
                 else:
-                    df = historical_manager.load(symbol, timeframe)
+                    df = historical_manager.load_symbol_data(symbol, timeframe)
 
                 if df is None or df.empty:
                     failed_filters['no_data'] += 1

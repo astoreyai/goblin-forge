@@ -643,7 +643,7 @@ class TestScreen:
         symbols = ['AAPL', 'MSFT', 'GOOGL']
 
         # Mock data loading
-        mock_historical_manager.load.return_value = sample_data_passing
+        mock_historical_manager.load_symbol_data.return_value = sample_data_passing
 
         # Mock indicator calculation (already has indicators)
         mock_indicator_engine.calculate_all.return_value = sample_data_passing
@@ -674,7 +674,7 @@ class TestScreen:
                 return sample_data_bb_fail
             return sample_data_passing
 
-        mock_historical_manager.load.side_effect = load_side_effect
+        mock_historical_manager.load_symbol_data.side_effect = load_side_effect
 
         def calc_side_effect(df, **kwargs):
             return df
@@ -700,7 +700,7 @@ class TestScreen:
         """Test screening when no symbols pass."""
         symbols = ['TSLA', 'GME', 'AMC']
 
-        mock_historical_manager.load.return_value = sample_data_bb_fail
+        mock_historical_manager.load_symbol_data.return_value = sample_data_bb_fail
         mock_indicator_engine.calculate_all.return_value = sample_data_bb_fail
 
         passed = filter_instance.screen(symbols, timeframe='1 hour')
@@ -725,7 +725,7 @@ class TestScreen:
 
         assert len(passed) == 2
         # Should not call historical_manager when data_dict provided
-        mock_historical_manager.load.assert_not_called()
+        mock_historical_manager.load_symbol_data.assert_not_called()
 
     @patch('src.screening.coarse_filter.historical_manager')
     @patch('src.screening.coarse_filter.indicator_engine')
@@ -748,7 +748,7 @@ class TestScreen:
                 'atr': np.ones(100) * 2.0
             })
 
-        mock_historical_manager.load.side_effect = load_side_effect
+        mock_historical_manager.load_symbol_data.side_effect = load_side_effect
 
         def calc_side_effect(df, **kwargs):
             return df
@@ -790,7 +790,7 @@ class TestScreen:
                 raise Exception("Data fetch error")
             return sample_data_passing
 
-        mock_historical_manager.load.side_effect = load_side_effect
+        mock_historical_manager.load_symbol_data.side_effect = load_side_effect
 
         def calc_side_effect(df, **kwargs):
             return df
@@ -826,7 +826,7 @@ class TestScreen:
         data_with_indicators['bb_position'] = 0.25
         data_with_indicators['atr'] = 2.0
 
-        mock_historical_manager.load.return_value = data_no_indicators
+        mock_historical_manager.load_symbol_data.return_value = data_no_indicators
         mock_indicator_engine.calculate_all.return_value = data_with_indicators
 
         passed = filter_instance.screen(symbols, timeframe='1 hour')
@@ -850,13 +850,13 @@ class TestScreenSymbol:
         sample_data_passing
     ):
         """Test screen_symbol when symbol passes."""
-        mock_historical_manager.load.return_value = sample_data_passing
+        mock_historical_manager.load_symbol_data.return_value = sample_data_passing
         mock_indicator_engine.calculate_all.return_value = sample_data_passing
 
         result = filter_instance.screen_symbol('AAPL', use_cached_data=True)
 
         assert result == True
-        mock_historical_manager.load.assert_called_once_with('AAPL', '1 hour')
+        mock_historical_manager.load_symbol_data.assert_called_once_with('AAPL', '1 hour')
 
     @patch('src.screening.coarse_filter.historical_manager')
     @patch('src.screening.coarse_filter.indicator_engine')
@@ -868,7 +868,7 @@ class TestScreenSymbol:
         sample_data_bb_fail
     ):
         """Test screen_symbol when symbol fails."""
-        mock_historical_manager.load.return_value = sample_data_bb_fail
+        mock_historical_manager.load_symbol_data.return_value = sample_data_bb_fail
         mock_indicator_engine.calculate_all.return_value = sample_data_bb_fail
 
         result = filter_instance.screen_symbol('TSLA', use_cached_data=True)
@@ -901,7 +901,7 @@ class TestScreenSymbol:
         filter_instance
     ):
         """Test screen_symbol when no data available."""
-        mock_historical_manager.load.return_value = None
+        mock_historical_manager.load_symbol_data.return_value = None
 
         result = filter_instance.screen_symbol('INVALID')
 
@@ -914,7 +914,7 @@ class TestScreenSymbol:
         filter_instance
     ):
         """Test screen_symbol handles errors."""
-        mock_historical_manager.load.side_effect = Exception("Load error")
+        mock_historical_manager.load_symbol_data.side_effect = Exception("Load error")
 
         result = filter_instance.screen_symbol('ERROR')
 

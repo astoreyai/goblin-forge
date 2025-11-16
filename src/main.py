@@ -349,7 +349,7 @@ def main():
     if args.dashboard:
         logger.info("Launching dashboard...")
         from src.dashboard.app import app
-        app.run_server(debug=True, host='0.0.0.0', port=8050)
+        app.run(debug=True, host='0.0.0.0', port=8050)
         return
 
     # Initialize system
