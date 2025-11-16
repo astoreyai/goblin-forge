@@ -585,6 +585,7 @@ class TrailingStopManager:
         - Returns None if data unavailable
         """
         try:
+            # Import at runtime to avoid circular dependencies
             from src.data.historical_manager import historical_manager
             from src.indicators.indicator_engine import indicator_engine
 

@@ -256,11 +256,12 @@ class IndicatorEngine:
                 fastd_matype=0  # SMA
             )
 
-            df['stoch_rsi_k'] = stoch_rsi_k
-            df['stoch_rsi_d'] = stoch_rsi_d
+            # Clamp values to 0-100 range (TA-Lib can occasionally exceed bounds)
+            df['stoch_rsi_k'] = np.clip(stoch_rsi_k, 0, 100)
+            df['stoch_rsi_d'] = np.clip(stoch_rsi_d, 0, 100)
 
             # Also calculate raw stochastic RSI for reference
-            df['stoch_rsi'] = stoch_rsi_k
+            df['stoch_rsi'] = df['stoch_rsi_k']
 
             return df
 
