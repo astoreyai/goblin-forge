@@ -1,0 +1,76 @@
+# Goblin Forge Configuration
+# https://github.com/astoreyai/goblin-forge
+
+general:
+  # Default agent to use when --agent is not specified
+  default_agent: claude
+
+  # Base directory for git worktrees
+  worktree_base: ~/.local/share/gforge/worktrees
+
+  # Auto-cleanup old sessions after N days
+  auto_cleanup_days: 7
+
+  # Maximum concurrent goblins
+  max_concurrent_agents: 10
+
+# tmux settings
+tmux:
+  # Socket name for tmux server
+  socket_name: gforge
+
+  # Default shell for tmux sessions
+  default_shell: $SHELL
+
+  # Scrollback history limit
+  history_limit: 50000
+
+# Git settings
+git:
+  # Prefix for auto-generated branch names
+  branch_prefix: "gforge/"
+
+  # Branch naming style: kebab-case, snake_case, camelCase
+  branch_style: kebab-case
+
+  # Auto-fetch before creating worktree
+  auto_fetch: true
+
+  # Auto-stash uncommitted changes
+  auto_stash: true
+
+# Voice control (Phase 6)
+voice:
+  # Enable voice control
+  enabled: false
+
+  # Whisper model: tiny, base, small, medium, large-v3
+  model: small
+
+  # Global hotkey to activate voice
+  hotkey: super+shift+g
+
+  # Language: auto or specific (en, es, de, etc.)
+  language: auto
+
+  # Optional wake word (empty = push-to-talk only)
+  wake_word: ""
+
+  # Play sound on recording start/stop
+  feedback_sound: true
+
+# Issue tracker integrations
+integrations:
+  github:
+    # Use gh CLI for GitHub integration
+    enabled: true
+
+  linear:
+    enabled: false
+    api_key: ${LINEAR_API_KEY}
+
+  jira:
+    enabled: false
+    url: ""
+    email: ""
+    token: ""
