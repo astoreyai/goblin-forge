@@ -1,24 +1,143 @@
-# Screener (Archived)
+# Goblin Forge
 
-This repository has been **archived** and replaced with a minimal implementation.
+> "Where code is forged by many small minds."
 
-## New Location
+**Goblin Forge** (`gforge`) is a multi-agent command-line orchestrator designed to coordinate and execute multiple coding-focused CLI agents in parallel.
 
-**[icli-scanner](https://github.com/astoreyai/icli-scanner)** - 450 lines vs 26,000 lines
+```
+     ╔═══════════════════════════════════════════════════════════════╗
+     ║                                                               ║
+     ║   ░██████╗░░█████╗░██████╗░██╗░░░░░██╗███╗░░██╗               ║
+     ║   ██╔════╝░██╔══██╗██╔══██╗██║░░░░░██║████╗░██║               ║
+     ║   ██║░░██╗░██║░░██║██████╦╝██║░░░░░██║██╔██╗██║               ║
+     ║   ██║░░╚██╗██║░░██║██╔══██╗██║░░░░░██║██║╚████║               ║
+     ║   ╚██████╔╝╚█████╔╝██████╦╝███████╗██║██║░╚███║               ║
+     ║   ░╚═════╝░░╚════╝░╚═════╝░╚══════╝╚═╝╚═╝░░╚══╝               ║
+     ║                                                               ║
+     ║   ███████╗░█████╗░██████╗░░██████╗░███████╗                   ║
+     ║   ██╔════╝██╔══██╗██╔══██╗██╔════╝░██╔════╝                   ║
+     ║   █████╗░░██║░░██║██████╔╝██║░░██╗░█████╗░░                   ║
+     ║   ██╔══╝░░██║░░██║██╔══██╗██║░░╚██╗██╔══╝░░                   ║
+     ║   ██║░░░░░╚█████╔╝██║░░██║╚██████╔╝███████╗                   ║
+     ║   ╚═╝░░░░░░╚════╝░╚═╝░░╚═╝░╚═════╝░╚══════╝                   ║
+     ║                                                               ║
+     ║           Multi-Agent CLI Orchestrator for Linux              ║
+     ║                                                               ║
+     ╚═══════════════════════════════════════════════════════════════╝
+```
 
-## Why Archived
+## Status: Phase 1 Complete
 
-The original screener was over-engineered for the requirement. Built a full trading platform (dashboard, database, positions, trailing stops) when only simple stock scanning was needed.
+- [x] CLI framework (Cobra)
+- [x] Configuration system (Viper + YAML)
+- [x] SQLite storage layer
+- [x] Agent registry (Claude, Codex, Gemini, Ollama)
+- [x] Basic spawn/list/stop commands
+- [ ] tmux session management (Phase 2)
+- [ ] TUI dashboard (Phase 4)
+- [ ] Voice control (Phase 6)
 
-| Metric | Old (this repo) | New (icli-scanner) |
-|--------|-----------------|-------------------|
-| Lines of code | 26,000 | 450 |
-| Modules | 32 | 1 |
-| Tests | 662 | Minimal |
-| Complexity | High | Low |
+## Quick Start
 
-## Lessons Learned
+```bash
+# Build
+make build
 
-1. **Start Simple** - Validate requirements before building
-2. **YAGNI** - You Aren't Gonna Need It
-3. **Early Feedback** - Ask "is this too much?" sooner
+# Or install locally
+make install
+
+# Check version
+gforge version
+
+# Initialize config
+gforge config init
+
+# Scan for installed agents
+gforge agents scan
+
+# List available agents
+gforge agents list
+
+# Spawn a goblin (agent instance)
+gforge spawn coder --agent claude --project ./my-app
+
+# List active goblins
+gforge list
+
+# Stop a goblin
+gforge stop coder
+```
+
+## Supported Agents
+
+| Agent | Command | Description |
+|-------|---------|-------------|
+| **Claude Code** | `claude` | Anthropic Claude Code CLI |
+| **Codex** | `codex` | OpenAI Codex CLI |
+| **Gemini** | `gemini` | Google Gemini CLI |
+| **Ollama** | `ollama` | Local LLMs (CodeLlama, DeepSeek, Qwen) |
+
+## Project Structure
+
+```
+goblin-forge/
+├── cmd/gforge/           # CLI entrypoint
+├── internal/
+│   ├── agents/           # Agent definitions and registry
+│   ├── config/           # Configuration management
+│   ├── coordinator/      # Goblin lifecycle management
+│   ├── logging/          # Structured logging
+│   └── storage/          # SQLite persistence
+├── configs/              # Default configuration files
+├── CLAUDE.md             # Full architecture documentation
+├── IMPLEMENTATION_PLAN.md # 8-phase roadmap
+└── Makefile
+```
+
+## Development
+
+```bash
+# Download dependencies
+make deps
+
+# Run tests
+make test
+
+# Run with coverage
+make coverage
+
+# Format code
+make fmt
+
+# Run linter
+make lint
+
+# Build for all platforms
+make build-all
+```
+
+## Configuration
+
+Config file: `~/.config/gforge/config.yaml`
+
+```yaml
+general:
+  default_agent: claude
+  worktree_base: ~/.local/share/gforge/worktrees
+
+tmux:
+  socket_name: gforge
+
+git:
+  branch_prefix: "gforge/"
+  branch_style: kebab-case
+```
+
+## Documentation
+
+- **[CLAUDE.md](./CLAUDE.md)** - Full architecture and CLI reference
+- **[IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md)** - 8-phase roadmap with deliverables
+
+## License
+
+Apache-2.0
