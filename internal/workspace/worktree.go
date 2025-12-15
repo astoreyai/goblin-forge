@@ -251,8 +251,8 @@ func (m *WorktreeManager) Commit(worktreePath, message string) (string, error) {
 		return "", fmt.Errorf("failed to stage changes: %w\nOutput: %s", err, string(output))
 	}
 
-	// Commit
-	commitCmd := exec.Command("git", "-C", worktreePath, "commit", "-m", message)
+	// Commit (with --no-gpg-sign to avoid signing issues in automated environments)
+	commitCmd := exec.Command("git", "-C", worktreePath, "commit", "--no-gpg-sign", "-m", message)
 	output, err := commitCmd.CombinedOutput()
 	if err != nil {
 		// Check if there's nothing to commit
